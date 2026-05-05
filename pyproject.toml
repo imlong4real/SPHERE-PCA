@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pca_sphere_projection"
+version = "0.2.0"
+description = "Spherical PCA hypothesis explorer for single-cell trajectory geometry."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Long Yuan", email = "lyuan13@jhmi.edu" }
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "scipy",
+    "statsmodels",
+    "plotly",
+    "pyyaml",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.30"]
+test = ["pytest"]
+
+[project.scripts]
+sphere-trace = "pca_sphere_projection.app:main"
+
+[project.urls]
+Homepage = "https://github.com/imlong4real/pca_sphere_projection"
+
+[tool.setuptools.packages.find]
+include = ["pca_sphere_projection*"]

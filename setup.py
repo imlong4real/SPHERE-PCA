@@ -17,7 +17,8 @@ setup(
         'seaborn',
         'scipy',
         'statsmodels',
-        'plotly'
+        'plotly',
+        'streamlit'
     ],
     classifiers=[
         'Programming Language :: Python :: 3',

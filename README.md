@@ -1,161 +1,172 @@
+# pca_sphere_projection — SPHERE-PCA
 
-# PCA Sphere Projection
+**Spherical PCA Hypothesis Explorer for Regulatory Trajectories and
+Embeddings.** A Python package and local web dashboard for projecting
+single-cell PCA embeddings onto a unit sphere, quantifying their
+geometric structure, and running the runnable subset of the H1–H7
+hypotheses from
+[`PNAS_EXTENSION_PROPOSAL.md`](PNAS_EXTENSION_PROPOSAL.md).
 
-PCA Sphere Projection is a Python package designed to visualize and analyze single-cell gene expression data projected onto a 3D unit sphere.
-
----
-
-## Features
-
-- Align PCA-projected data to biological root nodes on a 3D unit sphere.
-- Perform Euler rotations to refine visualization.
-- Create equirectangular projections for 2D mapping.
-- Correlate gene expression with pseudotime trajectories.
-- Conduct statistical analysis of pseudotime data across lineages.
+It is a **diagnostic** framework. It does **not** infer trajectories, and
+its perturbation module is a fixed-PCA-loading sensitivity analysis, not a
+causal in-silico knockout.
 
 ---
 
-## Installation
+## What the package does
 
-Install the package directly from GitHub:
+| Capability | Module | Entry-points |
+|---|---|---|
+| Project PC1–PC3 onto S² and align a chosen root cluster to the north pole | `core` | `align_to_north_pole`, `apply_euler_rotation`, `equirectangular_projection`, `visualize_globe` |
+| Quantify spherical structure with proper geometry | `sphere_stats` | `stripe_strength_score`, `spherical_anisotropy`, `fit_great_circle`, `geodesic_gradient`, `spherical_kde`, `horseshoe_null_test` |
+| Detect branching vs. linear trajectories | `topology` | `detect_branchpoints`, `linear_vs_branching_score`, `build_spherical_knn_graph` |
+| Compare datasets / replicates / species on S² | `comparison` | `procrustes_align_spheres`, `conserved_stripe_test`, `spherical_replicate_residual` |
+| Quantify root- and rotation-choice sensitivity | `robustness` | `root_sensitivity_analysis`, `rotation_robustness_analysis`, `compare_manual_vs_great_circle`, `pc_coordinate_quality_summary` |
+| Fixed-PCA-loading gene perturbation vector field | `perturbation` | `compute_gene_perturbation_vectors`, `decompose_perturbation_vectors`, `rank_genes_by_perturbation_magnitude`, `cluster_genes_by_perturbation_signature` |
+| Local interactive dashboard | `app` | `sphere-trace` (CLI) / `python -m pca_sphere_projection.app` |
+
+---
+
+## What the package needs as input
+
+The minimum input is a CSV with three columns of pre-computed PCA scores
+plus a categorical label, like the four examples in [examples/](examples/):
+
+| Column | Required? | Notes |
+|---|---|---|
+| `PC1`, `PC2`, `PC3` | yes | top three PC scores per cell. |
+| label column (e.g. `celltype`, `cluster`) | yes | used for picking the root and for visual colouring. |
+| pseudotime column (e.g. `cluster`) | optional | enables θ-vs-pseudotime tests, branchpoint detection, linear-vs-branching score. Can be ordinal or `lo-hi` time bins (parser configurable). |
+| gene expression matrix (`cells × genes`) | optional | unlocks H5 (stripe-boundary genes) and H7 (perturbation vector fields). |
+| sklearn PCA loadings (`components × genes`) | optional | required for H7. |
+| second matched dataset | optional | unlocks H3 (cross-dataset conservation) and H6 (replicate residual). |
+
+Per-dataset parameters (root cluster, Euler angles, lineage orderings,
+stripe ranges, candidate-roots for the sweep) live in
+[examples/example_configs.yaml](examples/example_configs.yaml). **Do not
+hard-code these inside functions.**
+
+---
+
+## Install
 
 ```bash
-pip install git+https://github.com/imlong4real/pca_sphere_projection.git
+git clone <repo>
+cd pca_sphere_projection
+pip install -e .
+pip install -e .[app]      # adds streamlit for the dashboard
+pip install -e .[test]     # adds pytest
 ```
 
 ---
 
-## Example Usage
+## Run the example analyses
 
-### 1. Alignment to the North Pole
-Align your PCA-projected data to the north pole using a biological root node.
+```bash
+# Run the full hypothesis suite on every CSV in examples/example_configs.yaml.
+python scripts/run_pnas_hypothesis_suite.py \
+    --config examples/example_configs.yaml \
+    --outdir outputs/hypothesis_suite
 
-```python
-import pandas as pd
-import pca_sphere_projection.core as pc
-
-# Load your dataset, which should contain the first three principal components and a column storing cell-type information
-data = pd.read_csv('your_file.csv')
-
-# Align data to the north pole
-centroid = data[data['celltype'] == 'root_node'][['PC1', 'PC2', 'PC3']].mean().values
-data = pc.align_to_north_pole(data, pcs_columns=['PC1', 'PC2', 'PC3'], cluster_column='cluster', root_node=centroid)
+# Or restrict to a subset:
+python scripts/run_pnas_hypothesis_suite.py --datasets klein planaria
 ```
+
+For each dataset the script writes
+`outputs/hypothesis_suite/<dataset>/`:
+
+- `metrics.json`, `metrics.csv` — every metric, machine-readable.
+- `report.md` — short scientific narrative with caveats.
+- `sphere_3d.html`, `equirectangular_2d.html` — interactive Plotly views.
+- `theta_vs_pseudotime.html`, `branchpoints_3d.html` — only when pseudotime
+  is configured.
+- `stripe_density.html`, `root_sensitivity.html`,
+  `rotation_robustness.html` — geometric robustness checks.
+
+A consolidated [hypothesis status table](outputs/hypothesis_suite/hypothesis_status_table.md)
+is also produced, marking each H1–H7 across each dataset as runnable or
+not from the available CSV.
 
 ---
 
-### 2. Fine-Tuning with Euler Rotations
-Adjust the projection using Euler rotations.
+## Launch the local dashboard
 
-```python
-data = pc.apply_euler_rotation(
-    data, 
-    pcs_columns=['PC1', 'PC2', 'PC3'], 
-    rotation_angles=[-90, -50, 50], 
-    degrees=True
-)
+```bash
+sphere-trace
+# equivalent:
+python -m pca_sphere_projection.app
 ```
+
+The app opens in your browser. Sidebar controls:
+
+- **Source.** Pick a built-in example (loads its config) or upload a CSV.
+- **Annotations.** Choose label, root, pseudotime, and pseudotime parser.
+- **Alignment.** Manual Euler angles *or* automated great-circle alignment.
+- **Geometry params.** Stripe-bin count and kNN k.
+- **Robustness.** Number and magnitude of rotation perturbations.
+
+The dashboard renders 3D sphere, equirectangular 2D map, stripe density,
+θ-vs-pseudotime, branchpoint score, root-sensitivity bars, rotation
+robustness histogram, and exposes optional H5 / H7 panels behind file
+uploaders. **Warning banners appear when a hypothesis cannot be tested
+from the current input** (e.g. CSV already L2-normalised → H4 not
+testable; no pseudotime → H2 disabled).
+
+Outputs can be exported as JSON metrics or processed-coordinate CSV.
 
 ---
 
-### 3. Equirectangular Projection
-Visualize your data in 2D using an equirectangular projection.
+## What each hypothesis requires
 
-```python
-pc.equirectangular_projection(
-    data, 
-    pcs_columns=['rotated_PC1', 'rotated_PC2', 'rotated_PC3'], 
-    cluster_column='celltype', 
-    categories=None, 
-    selected_celltypes=None, 
-    colormap='magma', 
-    figsize=(10, 8), 
-    point_size=1, 
-    alpha=0.7, 
-    xlim=(-180, 180), 
-    ylim=(-80, 80)
-)
-```
+See the full table in
+[outputs/hypothesis_suite/hypothesis_status_table.md](outputs/hypothesis_suite/hypothesis_status_table.md)
+or the proposal. Quick summary:
 
-#### Example Output:
-![Equirectangular Projection (C. elegans dataset)](images/celegan_stripe.png)
+| H | Idea | Runnable from PC-only CSV? | What's missing |
+|---|---|---|---|
+| H1 | Differentiation entropy decays along geodesics | no | external CytoTRACE / SCENT / SLICER scalar |
+| H2 | Branching vs. linear trajectory test | yes if pseudotime present | continuous DPT/scVelo would be stronger |
+| H3 | Conserved stripes across species | no | second matched dataset |
+| H4 | Radial component encodes cell-cycle / metabolic state | no when CSV pre-normalised | pre-normalisation PC scores + cycle/metabolic scores |
+| H5 | Stripe-boundary genes are switch-like regulators | no | gene × cell expression matrix |
+| H6 | Replicate-residual QC | no | matched replicate dataset |
+| H7 | Gene perturbation vector fields | no | expression matrix + sklearn PCA loadings + selected genes |
 
 ---
 
-### 4. 3D Globe Visualization
-Visualize the data on a 3D sphere (static or interactive).
+## What can and cannot be concluded from PC1–PC3-only CSVs
 
-```python
-pc.visualize_globe(
-    data, 
-    pcs_columns=['rotated_PC1', 'rotated_PC2', 'rotated_PC3'], 
-    cluster_column='celltype', 
-    colormap='magma', 
-    point_size=0.5, 
-    interactive=False, 
-    output_html=None, 
-    figsize=(10, 10), 
-    legend_columns=3
-)
-```
+**Can be concluded.** Whether the embedding has stripe-like geometry
+(`spherical_anisotropy`, `stripe_strength_score`); whether one principal
+great circle captures most of the variance (`fit_great_circle`); whether
+ordinal cell-type rank correlates with polar angle (Spearman ρ on θ);
+whether a branching model beats a linear one given that ordinal
+pseudotime (`linear_vs_branching_score`); how sensitive the geometry is
+to the root cluster (`root_sensitivity_analysis`) and the manual Euler
+choice (`rotation_robustness_analysis`, `compare_manual_vs_great_circle`).
 
-#### Example Output:
-- **C. elegans Globe:**
-  ![3D Globe (C. elegans dataset)](images/celegan_globe.png)
-- **Polar Regions:**
-  ![Polar View](images/celegan_polar.png)
-- **Human Colon Epithelial Stem Cell Development:**
-  ![Human Colon Development](images/epi_globe.png)
+**Cannot be concluded.** Causal trajectory direction; gene-level
+mechanism; cross-species conservation; whether the radial coordinate
+encodes biology; whether perturbing a gene in vivo would move cells the
+way the sensitivity analysis suggests; whether the geometry would
+survive re-PCA with different HVG selection. Every notebook example
+ships with a hand-tuned root and Euler rotation; any biological claim
+must be reported alongside its `root_sensitivity_analysis` and
+`rotation_robustness_analysis` envelopes.
 
 ---
 
-### 5. Lineage Correlation and Statistical Testing
-Analyze pseudotime trajectories and correlate sublineages inferred by other tools (e.g., PAGA). Optionally, perform statistical tests between lineages.
+## Test suite
 
-#### Visualize Correlation:
-```python
-pc.visualize_lineage_correlation(
-    data, 
-    cell_types_lineage1=['neoblast 1', 'gut progenitors', 'phagocytes'], 
-    cell_types_lineage2=None, 
-    pcs_columns=['rotated_PC1', 'rotated_PC2', 'rotated_PC3'], 
-    cluster_column='celltype', 
-    colormap='viridis', 
-    figsize=(5, 3), 
-    annotate=True
-)
+```bash
+python -m pytest tests/ -q
 ```
 
-#### Perform Statistical Tests:
-```python
-pc.statistical_test_on_lineages(
-    data, 
-    lineage1=['neural progenitors', 'ChAT neurons 1', 'ChAT neurons 2'], 
-    lineage2=['neural progenitors', 'cav-1+ neurons', 'GABA neurons'], 
-    pcs_columns=['rotated_PC1', 'rotated_PC2', 'rotated_PC3'], 
-    cluster_column='celltype', 
-    figsize=(12, 5)
-)
-```
-
-#### Example Output:
-- **Planaria Lineage Correlation:**
-  ![Planaria Lineage Correlation](images/planarian.png)
-- **Statistical Test Result:**
-  ![Statistical Test (Planaria)](images/planarian_test.png)
-
----
-
-## Reproducibility
-
-To reproduce these results or apply the package to your own data, see the example Jupyter notebooks in the `examples/` folder:
-
-- [Benchmark Analysis](examples/benchmark.ipynb)
-- [C. elegans Stripe Visualization](examples/celegan.ipynb)
-- [Planaria Developmental Trajectories](examples/planaria.ipynb)
+Currently covers `sphere_stats`, `topology`, `comparison`, `perturbation`,
+and `robustness`. The original `core.py` API is unchanged.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
