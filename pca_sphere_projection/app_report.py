@@ -27,8 +27,10 @@ radial magnitude of the original three-PC vector is discarded.</p>
 makes theta interpretable as angular distance from the chosen root, but it also
 means root choice is part of the model. Manual Euler tuning is avoided; instead
 the app fits a data-driven great circle and uses that frame for display.</p>
-<p>Stripe strength summarizes concentration in longitude bins. Anisotropy
-separates arc-like, ring-like, and sphere-filling geometry. Great-circle
+<p>The legacy single-number stripe metric is now reported as global longitude
+concentration. Multi-stripe structure is reported separately with detected
+stripe counts and per-stripe strength, so several arcs are not collapsed into
+one weak global score. Anisotropy separates arc-like, ring-like, and sphere-filling geometry. Great-circle
 residual measures how tightly the embedding lies near a single spherical
 trajectory. If pseudotime-like cluster labels are available, theta-pseudotime
 correlation is shown as an association, not proof of trajectory.</p>
@@ -43,6 +45,7 @@ def caveats_html() -> str:
 <h2>Caveats and Recommended Next Analyses</h2>
 <ul>
   <li>Run a gene-wise permutation or matched simulation null before interpreting stripes biologically.</li>
+  <li>Run PC-count, HVG-vs-all-gene, and root-sensitivity robustness before claiming PC1-PC3 are sufficient.</li>
   <li>Repeat root alignment with plausible alternative roots to quantify sensitivity.</li>
   <li>Compare theta against independent pseudotime, staged sampling, or RNA velocity when available.</li>
   <li>Inspect radial magnitude separately; normalization discards possible cell-cycle or metabolic signal.</li>

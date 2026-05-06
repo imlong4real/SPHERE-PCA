@@ -36,10 +36,67 @@ from .sphere_stats import (
     spherical_kde,
     stripe_strength_score,
 )
+from .stripe import (
+    detect_spherical_stripes,
+    multi_stripe_strength_score,
+    local_stripe_strength,
+    plot_detected_stripes,
+)
+from .pc_robustness import (
+    compute_scree_summary,
+    estimate_intrinsic_dimension,
+    compare_pc_count_spherical_geometry,
+    compare_top3_vs_random3_pcs,
+    compare_hvg_vs_all_gene_pc_geometry,
+)
 from .topology import (
     build_spherical_knn_graph,
     detect_branchpoints,
     linear_vs_branching_score,
+)
+from .io import (
+    ExpressionData,
+    load_expression_matrix,
+    load_rds_expression,
+    load_bz2_klein_dataset,
+    load_celegan,
+    load_uc_epi,
+    load_hesc,
+    load_brca_atlas,
+    match_expression_to_pc_csv,
+)
+from .preprocessing import (
+    PCAResult,
+    normalize_log1p,
+    select_hvgs,
+    filter_genes,
+    fit_pca_embedding,
+    compare_hvg_vs_all_gene_pca,
+)
+from .entropy import (
+    compute_transcriptional_entropy,
+    compute_cytotrace_proxy,
+    compute_scent_proxy,
+    test_entropy_geodesic_gradient,
+)
+from .gene_geometry import (
+    compute_gene_geodesic_gradients,
+    compute_per_cell_gene_geodesic_gradient,
+    decompose_gene_gradient_theta_phi,
+    decompose_gene_gradient_relative_to_stripes,
+    rank_stripe_boundary_genes,
+    rank_stripe_boundary_genes_per_cell,
+    rank_along_trajectory_genes,
+    rank_along_trajectory_genes_per_cell,
+    filter_housekeeping_and_low_specificity_genes,
+    plot_gene_gradient_field,
+    plot_gene_gradient_on_sphere,
+    plot_gene_gradient_equirectangular,
+)
+from .known_regulators import (
+    REGULATOR_SETS,
+    get_regulator_set,
+    annotate_overlap,
 )
 
 __all__ = [
@@ -56,6 +113,15 @@ __all__ = [
     "fit_great_circle",
     "spherical_anisotropy",
     "horseshoe_null_test",
+    "detect_spherical_stripes",
+    "multi_stripe_strength_score",
+    "local_stripe_strength",
+    "plot_detected_stripes",
+    "compute_scree_summary",
+    "estimate_intrinsic_dimension",
+    "compare_pc_count_spherical_geometry",
+    "compare_top3_vs_random3_pcs",
+    "compare_hvg_vs_all_gene_pc_geometry",
     "build_spherical_knn_graph",
     "detect_branchpoints",
     "linear_vs_branching_score",
@@ -74,4 +140,39 @@ __all__ = [
     "rotation_robustness_analysis",
     "pc_coordinate_quality_summary",
     "compare_manual_vs_great_circle",
+    # raw-expression validation
+    "ExpressionData",
+    "load_expression_matrix",
+    "load_rds_expression",
+    "load_bz2_klein_dataset",
+    "load_celegan",
+    "load_uc_epi",
+    "load_hesc",
+    "load_brca_atlas",
+    "match_expression_to_pc_csv",
+    "PCAResult",
+    "normalize_log1p",
+    "select_hvgs",
+    "filter_genes",
+    "fit_pca_embedding",
+    "compare_hvg_vs_all_gene_pca",
+    "compute_transcriptional_entropy",
+    "compute_cytotrace_proxy",
+    "compute_scent_proxy",
+    "test_entropy_geodesic_gradient",
+    "compute_gene_geodesic_gradients",
+    "compute_per_cell_gene_geodesic_gradient",
+    "decompose_gene_gradient_theta_phi",
+    "decompose_gene_gradient_relative_to_stripes",
+    "rank_stripe_boundary_genes",
+    "rank_stripe_boundary_genes_per_cell",
+    "rank_along_trajectory_genes",
+    "rank_along_trajectory_genes_per_cell",
+    "filter_housekeeping_and_low_specificity_genes",
+    "plot_gene_gradient_field",
+    "plot_gene_gradient_on_sphere",
+    "plot_gene_gradient_equirectangular",
+    "REGULATOR_SETS",
+    "get_regulator_set",
+    "annotate_overlap",
 ]

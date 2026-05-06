@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .sphere_stats import fit_great_circle, spherical_anisotropy, stripe_strength_score
+from .stripe import multi_stripe_strength_score
 from .topology import detect_branchpoints
 
 PC_COLUMNS = ["PC1", "PC2", "PC3"]
@@ -154,10 +155,14 @@ def add_spherical_coordinates(df: pd.DataFrame, coords: np.ndarray, prefix: str)
 
 
 def _metric_table(stripe: dict, anisotropy: dict, gc: dict) -> dict[str, float]:
+    multi = stripe.get("multi", {})
     return {
+        "global_longitude_concentration": float(stripe["score"]),
         "stripe_strength": float(stripe["score"]),
         "stripe_entropy_observed": float(stripe["entropy_observed"]),
         "stripe_entropy_uniform": float(stripe["entropy_uniform"]),
+        "multi_stripe_strength": float(multi.get("multi_stripe_strength", np.nan)),
+        "n_detected_stripes": float(multi.get("n_stripes", np.nan)),
         "anisotropy_linear": float(anisotropy["linear"]),
         "anisotropy_planar": float(anisotropy["planar"]),
         "anisotropy_spherical": float(anisotropy["spherical"]),
@@ -196,6 +201,7 @@ def run_projection_pipeline(
             pseudotime_column = "pseudotime"
 
     stripe = stripe_strength_score(display_coords, n_bins=36)
+    stripe["multi"] = multi_stripe_strength_score(display_coords)
     anisotropy = spherical_anisotropy(root_coords)
     metrics = _metric_table(stripe, anisotropy, gc)
     metrics["n_cells"] = int(out.shape[0])

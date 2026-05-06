@@ -1,0 +1,371 @@
+You are an expert computational biology methods engineer and PNAS-level reviewer.
+
+I am working on the `pca_sphere_projection` package and the updated `PNAS_EXTENSION_PROPOSAL.md`. The package already supports spherical PCA geometry, raw-expression validation, H1/H4/H5/H7 analyses, and Streamlit visualization.
+
+I have now added new raw datasets to `raw_data/`:
+
+1. `raw_data/planaria/dataset.rds`
+   - should contain expression matrix and real CytoTRACE or stemness score
+2. `raw_data/human_germ_cell/`
+   - inspect RDS/data files for expression, metadata, CytoTRACE/stemness
+3. `raw_data/pre_implant_human_embryo/`
+   - inspect RDS/data files for expression, metadata, CytoTRACE/stemness
+4. previous `raw_data/hESC/`
+   - contains real CytoTRACE rank
+5. `raw_data/BrCa_atlas/`
+   - breast cancer atlas from “A single-cell and spatially resolved atlas of human breast cancers”
+   - contains 100K+ cells, barcodes, matrix, features, batch info, metadata, cluster annotations
+   - use this as a negative/control dataset where a clean developmental stripe trajectory is not expected
+
+Your task is to upgrade the package and rerun analyses to address major PNAS reviewer concerns:
+1. PC dimension justification
+2. weak/global stripe-strength metric
+3. H1 relying too much on proxy entropy
+4. H5 producing housekeeping genes
+5. missing root / PC robustness
+6. missing negative-control dataset
+
+Do not overclaim. Be strict and reviewer-like.
+
+------------------------------------------------------------
+PART 1 — Fix PC dimension justification
+------------------------------------------------------------
+
+Do not justify PC1–PC3 only by saying “they explain the most variance.”
+
+Implement a rigorous PC-dimension robustness analysis.
+
+Create or update:
+
+```bash
+pca_sphere_projection/pc_robustness.py
+
+Functions:
+
+compute_scree_summary(X, max_pcs=50)
+estimate_intrinsic_dimension(X, methods=["participation_ratio", "pca_elbow"])
+compare_pc_count_spherical_geometry(X, gene_names, metadata, pc_counts=[3,5,10,20])
+compare_top3_vs_random3_pcs(X, n_random=100)
+compare_hvg_vs_all_gene_pc_geometry(X, gene_names, metadata)
+
+For each dataset:
+
+compute PCA up to at least 20 PCs if feasible
+report variance explained by PC1–3
+compare spherical geometry using:
+PC1–3
+PC1–5 projected/truncated to first 3
+PC1–10 projected/truncated to first 3
+random 3-PC subsets among PC1–20
+HVG PCA vs all-gene PCA when possible
+
+Metrics:
+
+multi-stripe strength
+great-circle R²
+spherical anisotropy
+θ–pseudotime correlation if pseudotime exists
+θ–CytoTRACE correlation if CytoTRACE exists
+root sensitivity
+rotation robustness
+
+Output:
+
+outputs/pc_robustness/{dataset}/pc_dimension_summary.csv
+outputs/pc_robustness/{dataset}/pc_dimension_robustness.png
+
+Conclusion should state:
+
+whether PC1–3 are sufficient
+whether results are stable to adding PCs
+whether random PC triplets fail
+whether HVG vs all-gene PCA changes interpretation
+
+Important manuscript framing:
+Use PC1–3 because S² requires three Euclidean axes and PC1–3 are the dominant orthogonal variance axes, but claim validity only after robustness across PC count and feature selection.
+
+PART 2 — Replace global stripe-strength with multi-stripe detection
+
+The current stripe_strength_score assumes one global stripe and can underestimate structure when multiple stripes/arcs stem from a common origin.
+
+Implement a multi-stripe-aware metric.
+
+Create or update:
+
+pca_sphere_projection/stripe.py
+
+or update sphere_stats.py.
+
+Required functions:
+
+detect_spherical_stripes(coords, root=None, method="local_density_graph")
+multi_stripe_strength_score(coords, labels=None, root=None)
+local_stripe_strength(coords, stripe_assignments)
+plot_detected_stripes(coords, stripe_assignments)
+
+Acceptable implementation strategy:
+
+Use spherical coordinates after root alignment.
+Build a spherical kNN graph using geodesic distances.
+Compute local density / local tangent direction.
+Use connected components or graph clustering to identify stripe-like arcs.
+Optionally use message passing / central-pole propagation:
+start from root / high-density origin
+propagate along local geodesic neighborhoods
+assign cells to stripe branches based on angular continuity
+Avoid requiring deep learning.
+Keep deterministic behavior.
+
+The metric should report:
+
+n_stripes
+global_longitude_entropy_score
+mean_local_stripe_strength
+median_local_stripe_strength
+per_stripe_strength
+per_stripe_size
+per_stripe_length
+per_stripe_width
+
+Important:
+
+If multiple stripes exist, do NOT collapse them into a weak global score.
+Report individual stripe strengths and the average/median.
+Retain the old global stripe score only as “global longitude concentration,” not as the main stripe metric.
+
+Rerun stripe statistics for all datasets in raw_data/.
+
+Output:
+
+outputs/stripe_robustness/{dataset}/multi_stripe_metrics.csv
+outputs/stripe_robustness/{dataset}/detected_stripes.png
+outputs/stripe_robustness/{dataset}/per_stripe_report.md
+
+Update app and reports so “stripe strength” is renamed:
+
+old metric: global_longitude_concentration
+new metric: multi_stripe_strength
+PART 3 — H1: use only real CytoTRACE/stemness datasets
+
+Do not rely on Shannon proxy entropy for the main H1 claim.
+
+Inspect the following datasets:
+
+hESC
+planaria/dataset.rds
+human_germ_cell
+pre_implant_human_embryo
+
+For each:
+
+identify expression matrix
+identify real CytoTRACE / stemness / potency score
+identify metadata, pseudotime, developmental stage, or cell type if available
+run spherical PCA from raw expression
+align root to high-CytoTRACE/high-stemness cells unless a biological root is provided
+compute geodesic distance from root
+test CytoTRACE/stemness vs geodesic distance
+compare against Euclidean PC distance
+compare against randomized root anchors
+
+Outputs:
+
+outputs/H1_cytotrace_only/{dataset}/H1_cytotrace_metrics.csv
+outputs/H1_cytotrace_only/{dataset}/H1_cytotrace_gradient.png
+outputs/H1_cytotrace_only/summary_H1_real_cytotrace.csv
+
+Main H1 claim should use only datasets with real CytoTRACE/stemness scores.
+
+Proxy entropy may remain in supplement, clearly labelled as exploratory.
+
+PART 4 — H5: replace coarse grid gene scoring with per-cell geodesic gradients
+
+The previous 18×36 grid score was too coarse and returned housekeeping genes.
+
+Implement high-resolution per-cell geodesic-gradient H5.
+
+Create or update:
+
+pca_sphere_projection/gene_geometry.py
+
+Functions:
+
+compute_per_cell_gene_geodesic_gradient(X, gene_names, coords, genes=None, k=30)
+decompose_gene_gradient_theta_phi(coords, gradients)
+rank_stripe_boundary_genes_per_cell(...)
+rank_along_trajectory_genes_per_cell(...)
+filter_housekeeping_and_low_specificity_genes(...)
+plot_gene_gradient_on_sphere(...)
+plot_gene_gradient_equirectangular(...)
+
+Requirements:
+
+Use per-cell local geodesic gradient, not coarse grid bins.
+Decompose each gene’s gradient into:
+θ component: along progression
+φ component: stripe-crossing / fate-boundary direction
+radial if pre-normalization PCs available
+Rank genes by:
+mean absolute φ component
+localized high φ component
+φ/θ ratio
+expression specificity
+Penalize housekeeping genes:
+high ubiquitous expression
+ribosomal/mitochondrial genes
+low cell-type specificity
+high correlation with library size
+
+For each dataset with expression and gene symbols:
+
+run H5 per-cell geodesic gradient
+compare top genes against curated known regulators
+produce top 20 stripe-boundary genes and top 20 along-trajectory genes
+generate plots for top 3–5 genes
+
+Output:
+
+outputs/H5_geodesic_gradient/{dataset}/H5_ranked_genes.csv
+outputs/H5_geodesic_gradient/{dataset}/H5_top_gene_gradients.png
+outputs/H5_geodesic_gradient/{dataset}/H5_known_regulator_overlap.csv
+
+If H5 still returns housekeeping genes, say so honestly and mark H5 as not supported.
+
+PART 5 — Add root robustness analysis
+
+Implement root sensitivity across plausible biological roots.
+
+Functions:
+
+root_sensitivity_analysis(coords_or_df, metadata, candidate_roots, metrics)
+plot_root_sensitivity(...)
+
+For each dataset:
+
+define candidate roots from:
+earliest time bin
+highest CytoTRACE/stemness quantile
+known stem/progenitor cell types
+random roots as negative controls
+rerun alignment and compute:
+multi-stripe strength
+θ–pseudotime correlation
+θ–CytoTRACE correlation
+great-circle R²
+anisotropy
+report whether conclusions are stable.
+
+Output:
+
+outputs/root_robustness/{dataset}/root_sensitivity_metrics.csv
+outputs/root_robustness/{dataset}/root_sensitivity_plot.png
+PART 6 — Add BrCa atlas as negative/control dataset
+
+Inspect:
+
+raw_data/BrCa_atlas/
+
+Load:
+
+matrix
+barcodes
+features
+metadata
+batch info
+cluster annotations
+
+Run the same geometric pipeline:
+
+raw expression preprocessing
+PCA
+sphere projection
+multi-stripe detection
+anisotropy
+great-circle R²
+root sensitivity if meaningful
+compare HVG vs all-gene PCA
+batch/cluster association with radial and angular components
+
+Expected negative-control behavior:
+
+no clean monotonic θ–pseudotime signal
+weaker or fragmented multi-stripe structure
+geometry may reflect tumor subtype, batch, epithelial/immune/stromal composition, or cell cycle rather than developmental progression
+
+Do NOT force this to be negative. Report what it shows.
+
+Output:
+
+outputs/negative_control/BrCa_atlas/BrCa_geometric_metrics.csv
+outputs/negative_control/BrCa_atlas/BrCa_sphere.png
+outputs/negative_control/BrCa_atlas/BrCa_interpretation.md
+
+Add a summary comparing developmental datasets vs BrCa:
+
+outputs/negative_control/developmental_vs_brca_summary.csv
+PART 7 — Update Streamlit app
+
+Update the app to expose:
+
+old global longitude concentration
+new multi-stripe detection
+per-stripe strength table
+root robustness
+PC-count robustness
+H1 real CytoTRACE-only workflow if score column is uploaded
+H5 per-cell geodesic-gradient gene ranking if expression matrix is uploaded
+negative-control mode
+
+Update UI text:
+
+avoid “stripe strength” as a single number
+say “global longitude concentration” versus “multi-stripe structure”
+warn if input has only PC1–3 and no expression/stemness/pseudotime
+PART 8 — Update documentation and proposal
+
+Update:
+
+README.md
+PNAS_EXTENSION_PROPOSAL.md
+final summary files
+
+Add sections:
+
+## PC dimension justification
+## Multi-stripe structure metric
+## H1 analysis restricted to real CytoTRACE/stemness datasets
+## H5 per-cell geodesic-gradient analysis
+## Root and PC robustness
+## Negative control: BrCa atlas
+
+Update PNAS readiness:
+
+state whether PC1–3 are justified
+state whether multi-stripe metric rescues previously low stripe scores
+state whether H1 now rests on multiple real CytoTRACE/stemness datasets
+state whether H5 now identifies regulators rather than housekeeping genes
+state whether BrCa behaves as a negative or non-developmental control
+state what still blocks PNAS submission
+PART 9 — Final deliverables
+
+Return:
+
+List of new/modified files
+Summary of loaded datasets and missing data
+PC dimension robustness table
+Old global stripe score vs new multi-stripe score table
+H1 real-CytoTRACE summary across hESC, planaria, human germ cell, pre-implantation embryo
+H5 top genes after per-cell gradient refinement
+Root robustness summary
+BrCa negative-control interpretation
+Updated PNAS-readiness verdict
+
+Hard constraints:
+
+Do not fabricate CytoTRACE/stemness columns if absent.
+Do not claim PC1–3 are sufficient unless robustness supports it.
+Do not claim stripe biology from global longitude entropy alone.
+Do not claim H5 works if top hits remain housekeeping.
+Do not force BrCa to be negative; report observed structure honestly.
+Do not claim H7 is causal.
+Keep old metrics for backward compatibility but rename them clearly.

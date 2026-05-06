@@ -6,6 +6,72 @@ journal submission.
 
 ---
 
+## 2026-05-05 reviewer-response update
+
+The package now includes a runnable robustness/control workflow:
+`scripts/run_pc_robustness_cytotrace_neg_ctrl.py`. It addresses the major
+reviewer concerns without changing the central caveat: spherical PCA is a
+diagnostic coordinate system, not a trajectory inference method.
+
+### PC dimension justification
+
+PC1-PC3 are no longer justified only by variance explained. They are used
+because projection to S² requires three Euclidean axes and PC1-PC3 are the
+dominant orthogonal PCA axes. Manuscript-level claims must be conditional on
+the output of `outputs/pc_robustness/<dataset>/pc_dimension_summary.csv`,
+including PC-count, random-PC-triplet, and HVG-vs-all-gene comparisons.
+
+### Multi-stripe structure metric
+
+The old global stripe score has been renamed
+`global_longitude_concentration`. The new `multi_stripe_strength` reports
+detected stripe counts and per-stripe length/width/strength, so multiple
+arcs are not collapsed into one weak global entropy score. This is useful
+but not itself biological evidence: BrCa can also show fragmented
+multi-stripe geometry.
+
+### H1 restricted to real CytoTRACE/stemness
+
+The main H1 table now uses only real CytoTRACE/stemness columns from hESC,
+planaria, human germ cell, and pre-implantation human embryo. Shannon
+entropy remains supplemental/exploratory and should not support the main
+claim.
+
+### H5 per-cell geodesic-gradient analysis
+
+H5 has been upgraded from coarse grid scoring to a per-cell local
+geodesic-gradient refinement after HVG prefiltering. Rankings include
+theta and phi tangent components, localized phi gradients, expression
+specificity, and housekeeping penalties. These are candidate regulators
+only; H5 is unsupported if top hits remain housekeeping-like or lack
+known-regulator/perturbation validation.
+
+### Root and PC robustness
+
+Root sensitivity is now reported across high-stemness roots, low-stemness
+roots, phenotype roots, and random roots. PC robustness is reported across
+PC-count summaries, top-three versus random PC triplets, and feature-set
+choices.
+
+### Negative control: BrCa atlas
+
+The BrCa atlas is included as a non-developmental control. The correct
+interpretation is not "must be negative"; rather, any observed spherical
+structure should be checked against patient, subtype, batch, tumor program,
+and major cell-composition annotations before developmental language is
+used.
+
+### Current readiness verdict
+
+The workflow materially improves PC justification, H1 score provenance,
+multi-stripe quantification, root robustness, and negative-control coverage.
+Remaining blockers for a PNAS submission are independent biological
+validation of H5, stronger null models for multi-stripe detection, and
+clear evidence that PC/random-root robustness supports each dataset-specific
+claim.
+
+---
+
 ## Phase 1 — Codebase Understanding
 
 ### 1.1 Repository layout
@@ -1033,3 +1099,115 @@ manuscript framing is the geometric framework + the orientation bug we
 caught + a partial validation on one dataset for which the missing data
 exists. Anything broader will be punished in review, and the proposal
 text now embeds enough caveats that the framing should hold.
+
+---
+
+## Raw-expression validation workflow
+
+**Status: implemented and run.** A new end-to-end pipeline starts from raw
+cell × gene matrices (Matrix Market, .bz2 dense CSV per day, .rds via
+`rdata`), re-derives PCA, fits the spherical embedding, and runs H1, H4,
+H5, H7 — replacing the previous "PC1–PC3 CSV only" entry-point for
+hypotheses that need gene-level data. See
+[outputs/raw_expression_validation/final_summary.md](outputs/raw_expression_validation/final_summary.md)
+for the full results writeup.
+
+### Datasets tested
+
+| Dataset | What was available | Hypotheses runnable |
+|---|---|---|
+| C. elegans (Packer) | Matrix Market counts, gene symbols, embryo-time bins, celltype, batch | H1 (proxy), H4, H5, H7 |
+| UC epithelium (Smillie) | counts, cell barcodes, celltype, health/location/patient, gene symbols (1361-gene panel; **`uc_epi_gene.tsv` added 2026-05-05**) | H1 (proxy), H4 (now with cell-cycle / mito / ribo scores), H5, H7 (with real symbols) |
+| Klein mESC | four per-day .bz2 CSVs, mouse gene symbols, day labels | H1 (proxy), H4, H5, H7 |
+| hESC (CytoTRACE example RDS) | log-norm exprMatrix, **precomputed CytoTRACE rank**, phenotype | H1 (proper CytoTRACE), H4, H5, H7 |
+
+### Hypothesis support, observed
+
+| Hypothesis | Verdict on raw-expression data |
+|---|---|
+| **H1** entropy gradient | Supported in all four datasets in direction (negative ρ between entropy/stemness and geodesic distance from a stem anchor). Strongest, and methodologically cleanest, on hESC with **real CytoTRACE rank**: Spearman ρ = −0.637 (p ≪ 1e-100). UC epi's ρ = −0.886 is suspect (proxy + no symbols → likely capturing depth, not stemness). |
+| **H4** radial vs angular | Supported — but the split is dataset-specific. hESC: cell-cycle vs radial ρ = −0.74 — strong. Klein: pseudotime/day vs radial ρ = +0.51. C. elegans: pseudotime/embryo-time vs θ ρ = +0.815 (the angular axis is the real developmental clock). |
+| **H5** stripe-boundary genes | **Not supported by the coarse 18 × 36 grid score.** Top hits are housekeeping in Klein and uncharacterised genes in C. elegans. Recommended fix: per-cell geodesic-gradient field on the top-N H5 candidates instead of grid means. |
+| **H7** fixed-loading perturbation | Strongest result on Klein: **Pou5f1 (Oct4)** ranks #1 with magnitude 0.91, > 4× the next gene; Sox2, Mixl1, Klf2, Dnmt3b round out the top 6. 10 of 30 candidate genes overlap the curated naive-pluripotency list. hESC's top 5 (HAPLN1, FGF12, GABRB3, JARID2, CDC20) include JARID2 (epigenetic, plausible) and CDC20 (cell-cycle); none are in the strict OCT4/SOX2/NANOG list. **UC epithelium (re-run 2026-05-05 with symbols)**: top 5 = CA2, **MUC2**, HMGN2, **PLA2G2A**, **OLFM4**; KRT20 and LYZ rank 6 and 9 — 6 of the top 11 are curated intestinal-epithelium regulators. Two independent recapitulations (Klein, UC epi). |
+
+### Candidate genes identified
+
+**Klein mESC (top 10 by H7 magnitude, fixed-loading sensitivity):**
+Pou5f1, Sox2, Mixl1, Klf2, Nol11, Dnmt3b, Ttc9c, Mynn, Rn7s2, Rn7s1
+— 4/5 of the top 5 are well-known pluripotency or primitive-streak
+markers (Pou5f1/Oct4, Sox2, Mixl1, Klf2). This is the cleanest
+hypothesis-supporting result of the workflow.
+
+**hESC (top 5 by H7 magnitude):**
+HAPLN1, FGF12, GABRB3, JARID2, CDC20 — JARID2 and CDC20 are biologically
+plausible pluripotency-context hits but are not in the strict curated
+list, so they are reported as the analysis's *predictions* rather than
+literature recapitulations.
+
+**C. elegans (top 5):** oac-51, C49F8.3, Y32F6A.5, osm-11, F22F4.9 — all
+reasonably-expressed but none are canonical embryogenesis regulators
+in the conservative WormBase list. These are nominations, not
+recapitulations.
+
+**UC epithelium (top 11 by H7 magnitude, after symbol annotation 2026-05-05):**
+CA2, MUC2, HMGN2, PLA2G2A, OLFM4, KRT20, SFN, AOC1, LYZ, TGOLN2, SPDEF —
+six of these (MUC2, PLA2G2A, OLFM4, KRT20, LYZ, SPDEF) are in the
+curated intestinal-epithelium regulator set, spanning goblet, Paneth,
+stem, enterocyte, and secretory-lineage TF programs. This is the
+second independent dataset on which H7 recapitulates known regulators
+(Klein being the first), so the gene-prioritisation tool's behaviour
+is consistent across systems and species.
+
+### Figures produced
+
+For each dataset under
+`outputs/raw_expression_validation/<dataset>/figures/`:
+
+- `H1_entropy_gradient.png` — entropy on the 3D sphere, equirectangular
+  projection, and entropy-vs-θ scatter.
+- `H4_radial_vs_angular.png` — radial vs θ scatter and a Spearman-ρ bar
+  chart of every variable against both axes.
+- `H5_gene_gradient.png` — top-20 stripe-boundary and along-trajectory
+  genes; known regulators are highlighted in red.
+- `H7_perturbation_vector_field.png` — equirectangular vector field for
+  the top 5 H7 candidate genes per dataset (blue = zeroed, red =
+  doubled).
+- A combined `outputs/raw_expression_validation/summary_heatmap.png`
+  shows the |ρ| of every H1 / H4 metric across datasets at a glance.
+
+### Caveats (carried over from the run)
+
+- H7 vector fields are fixed-PCA-loading sensitivities, not in-silico
+  knockouts. They tell you which genes most align with the spherical
+  axes given the current loadings; they do not predict perturbation
+  phenotypes.
+- UC epi has no gene symbols, so its H5/H7 rankings are not biologically
+  interpretable.
+- Three of the four H1 results use a **Shannon-entropy proxy**, not
+  CytoTRACE or SCENT. The hESC RDS dataset is the only one that ships
+  with a real CytoTRACE rank, and that is the dataset where H1's
+  geometric claim is properly testable.
+- C. elegans and UC epi were run on a 20k random subsample because of
+  the (cells × HVGs) PCA cost. Re-running with `--max-cells 0` would
+  use all cells; we provide the option but did not commit it as the
+  default.
+- The H5 grid score is too coarse to localise switch-like regulators;
+  the raw-expression infrastructure now in place makes the next iteration
+  (per-cell geodesic gradient on top-N candidates) a one-script change.
+
+### What's still missing for PNAS-level claims
+
+The workflow now answers what was previously blocked by "no gene-level
+input". What still blocks the paper is:
+
+1. CRISPR/RNAi follow-up on at least one nominated H7 gene that is
+   *not* already a canonical regulator (e.g. JARID2 in hESC).
+2. Real CytoTRACE/SCENT runs on celegan and UC epi (would also resolve
+   the depth-vs-biology ambiguity in UC epi's H1 result).
+3. Gene-symbol annotation of the UC epi matrix.
+4. Matched replicates per system (for H6).
+5. A continuous DPT/Palantir pseudotime per dataset to replace the
+   ordinal day/embryo-time bins.
+
+The package now provides every interface those analyses need; the
+remaining blockers are data, not code.

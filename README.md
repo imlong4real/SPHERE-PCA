@@ -24,6 +24,11 @@ causal in-silico knockout.
 | Quantify root- and rotation-choice sensitivity | `robustness` | `root_sensitivity_analysis`, `rotation_robustness_analysis`, `compare_manual_vs_great_circle`, `pc_coordinate_quality_summary` |
 | Fixed-PCA-loading gene perturbation vector field | `perturbation` | `compute_gene_perturbation_vectors`, `decompose_perturbation_vectors`, `rank_genes_by_perturbation_magnitude`, `cluster_genes_by_perturbation_signature` |
 | Local interactive dashboard | `app` | `sphere-trace` (CLI) / `python -m pca_sphere_projection.app` |
+| **Raw cell × gene I/O for .mtx, .rds, .bz2** | `io` | `load_celegan`, `load_uc_epi`, `load_hesc`, `load_bz2_klein_dataset`, `load_expression_matrix`, `match_expression_to_pc_csv` |
+| **Preprocessing: log-norm, HVG selection, mito/ribo/cell-cycle filtering, comparative PCA** | `preprocessing` | `normalize_log1p`, `select_hvgs`, `filter_genes`, `fit_pca_embedding`, `compare_hvg_vs_all_gene_pca` |
+| **Per-cell entropy / stemness scoring (Shannon, CytoTRACE proxy, SCENT proxy) and the H1 geodesic-gradient test** | `entropy` | `compute_transcriptional_entropy`, `compute_cytotrace_proxy`, `compute_scent_proxy`, `test_entropy_geodesic_gradient` |
+| **Per-gene gradient on S² and stripe-boundary vs. along-trajectory ranking (H5)** | `gene_geometry` | `compute_gene_geodesic_gradients`, `rank_stripe_boundary_genes`, `rank_along_trajectory_genes`, `decompose_gene_gradient_relative_to_stripes`, `plot_gene_gradient_field` |
+| **Curated, conservative known-regulator sets for celegan / hESC / klein / uc_epi** | `known_regulators` | `REGULATOR_SETS`, `get_regulator_set`, `annotate_overlap` |
 
 ---
 
@@ -89,6 +94,85 @@ not from the available CSV.
 
 ---
 
+## Raw-expression validation workflow
+
+The PC1–PC3 CSV pipeline above starts from pre-computed PCs. The
+**raw-expression validation workflow** instead starts from the original
+cell × gene matrices and re-derives PCA, geometry, gene gradients, and
+fixed-loading perturbations end-to-end. It is what the H1, H4, H5, H7
+hypotheses in the proposal actually need.
+
+### Datasets covered
+
+Place these under `raw_data/`:
+
+| Dataset | Format | What's there | What's missing |
+|---|---|---|---|
+| C. elegans (Packer) | `celegan.mtx` + sidecar tsvs | counts, gene symbols, cell barcodes, embryo-time bins, celltype, batch | celltype is `NA` for ~half of cells |
+| UC epithelium (Smillie) | `uc_epi.mtx` + sidecar tsvs | counts, cell barcodes, celltype, health/location/patient batch | **no gene-name file** — features are anonymous indices |
+| Klein mESC | four `GSM1599*.csv.bz2` | counts, mouse gene symbols, day labels (d0/d2/d4/d7) | original cell barcodes were not preserved in the column headers |
+| hESC (CytoTRACE example) | `dataset.rds` (read with `rdata`) | log-norm exprMatrix, gene symbols, cell IDs, phenotype, **real CytoTRACE rank scores** | nothing material |
+| planaria | `Planaria.csv` | already a 50-PC matrix | raw counts not present — planaria is excluded from this workflow |
+
+A full inventory is at
+[outputs/raw_expression_validation/data_inventory.md](outputs/raw_expression_validation/data_inventory.md).
+
+### Run
+
+```bash
+# Full workflow: H1, H4, H5, H7 on celegan, uc_epi, klein, hESC.
+python scripts/run_raw_expression_validation.py \
+    --raw-data raw_data \
+    --out outputs/raw_expression_validation
+
+# Restrict datasets / cell counts:
+python scripts/run_raw_expression_validation.py \
+    --datasets klein hesc \
+    --max-cells 0          # disable the random subsample cap
+
+# After the orchestrator, generate publication PNGs:
+python scripts/plot_raw_validation_figures.py \
+    --out outputs/raw_expression_validation \
+    --raw-data raw_data
+```
+
+For each dataset the orchestrator writes
+`outputs/raw_expression_validation/<dataset>/`:
+
+- `pca_comparison_metrics.csv` — PC1–3 variance, stripe strength,
+  great-circle R², linear anisotropy, θ-vs-pseudotime ρ for HVG / all-gene
+  / no-mito-ribo / random-matched-set PCA.
+- `H1_entropy_gradient_metrics.csv` — Spearman ρ of entropy/stemness vs.
+  geodesic distance from the stem anchor (and vs. plain Euclidean PC
+  distance for comparison). hESC uses the **precomputed CytoTRACE
+  rank**; the others use a labelled Shannon-entropy proxy.
+- `H4_radial_angular_metrics.csv` — Spearman ρ of radial norm and θ
+  against cell-cycle / mito / ribo / entropy / pseudotime scores.
+- `H5_stripe_boundary_genes.csv`, `H5_along_trajectory_genes.csv` —
+  per-gene grid-based variation on S²; ranked phi-variation vs.
+  theta-variation, with a `is_known_regulator` overlap column.
+- `H7_perturbation_gene_rankings.csv` — fixed-loading sensitivity
+  magnitude per gene, decomposed into radial / θ / φ tangent components
+  on S². **Not a CRISPR/RNAi prediction.**
+- `per_cell_geometry.csv`, `_artifacts.npz` — per-cell PC1–3, (x, y, z),
+  θ, φ, radial norm, entropy score, plus all metadata; consumed by the
+  plotting script.
+
+A combined `outputs/raw_expression_validation/final_summary.md` with a
+per-dataset hypothesis-support table is written at the end of every run.
+
+### What the workflow can and cannot conclude
+
+- **Can:** quantify the strength of an entropy gradient along geodesic
+  distance; show whether radial norm and θ correlate with different
+  biology; produce per-gene phi/θ-variation rankings; rank genes by
+  fixed-loading sensitivity magnitude on S².
+- **Cannot:** prove H1 from a Shannon-entropy proxy alone; declare a
+  stripe-boundary gene a causal regulator without CRISPR/RNAi; treat
+  H7's perturbation magnitudes as in-vivo knockout effects.
+
+---
+
 ## Launch the local dashboard
 
 ```bash
@@ -113,6 +197,38 @@ from the current input** (e.g. CSV already L2-normalised → H4 not
 testable; no pseudotime → H2 disabled).
 
 Outputs can be exported as JSON metrics or processed-coordinate CSV.
+
+---
+
+## Reviewer-response robustness workflow
+
+The prompt-driven reviewer response in
+`PC_robustness_cytotrace_neg_ctrl_050526` is implemented by:
+
+```bash
+python scripts/run_pc_robustness_cytotrace_neg_ctrl.py
+```
+
+It writes outputs under `outputs/pc_robustness/`,
+`outputs/stripe_robustness/`, `outputs/H1_cytotrace_only/`,
+`outputs/H5_geodesic_gradient/`, `outputs/root_robustness/`, and
+`outputs/negative_control/`.
+
+Key framing updates:
+
+- PC1-PC3 are used because S² needs three Euclidean axes and these are the
+  dominant orthogonal PCA axes, but interpretation now depends on PC-count,
+  random-PC, and HVG-vs-all-gene robustness.
+- The legacy single stripe metric is now named
+  `global_longitude_concentration`. The preferred reported metric is
+  `multi_stripe_strength` with per-stripe tables.
+- Main H1 evidence is restricted to datasets with real CytoTRACE/stemness
+  columns. Proxy entropy is exploratory.
+- H5 now includes a per-cell geodesic-gradient refinement with housekeeping
+  and low-specificity penalties; it remains a screening analysis.
+- BrCa atlas is treated as a non-developmental control. Any structure in it
+  should be interpreted as patient, subtype, batch, cell-composition, or
+  tumor-program structure unless an independent developmental score exists.
 
 ---
 
