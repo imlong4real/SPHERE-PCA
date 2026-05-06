@@ -9,6 +9,7 @@ outputs/
 *.ipynb_checkpoints/
 
 # Large or intermediate data
+raw_data/
 data/
 *.h5ad
 *.loom
