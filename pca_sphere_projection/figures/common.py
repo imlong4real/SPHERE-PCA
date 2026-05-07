@@ -149,6 +149,223 @@ def load_artifacts(val_out: Path, ds: str):
     return np.load(p)
 
 
+# ---------------------------------------------------------------------------
+# Multi-dataset PCA helpers used by Figure 2 panels
+# ---------------------------------------------------------------------------
+
+# Canonical dataset order across Fig 2 panels ("all datasets" in B/C/D).
+FIG2_ALL_DATASETS = [
+    "celegan",
+    "klein",
+    "hesc",
+    "planaria",
+    "human_germ_cell",
+    "pre_implant_human_embryo",
+    "uc_epi",
+]
+
+DATASET_DISPLAY = {
+    "celegan": "C. elegans",
+    "klein": "Klein mESC",
+    "hesc": "hESC",
+    "planaria": "Planaria",
+    "human_germ_cell": "Human germ cell",
+    "pre_implant_human_embryo": "Pre-impl. embryo",
+    "uc_epi": "UC epithelium",
+}
+
+
+def _raw_data_dir() -> Path:
+    return ROOT / "raw_data"
+
+
+def _raw_data_subdir(ds: str) -> Optional[Path]:
+    aliases = {"hesc": "hESC", "hESC": "hESC"}
+    folder = _raw_data_dir() / aliases.get(ds, ds)
+    return folder if folder.exists() else None
+
+
+def _cache_dir() -> Path:
+    p = ROOT / "outputs" / "figures" / "Fig2" / "_cache"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def load_raw_expression(ds: str):
+    """Load raw expression for a dataset using the existing IO helpers."""
+    folder = _raw_data_subdir(ds)
+    if folder is None:
+        return None
+    from .. import io as psp_io
+
+    if ds == "klein":
+        return psp_io.load_bz2_klein_dataset(str(folder))
+    if ds == "celegan":
+        return psp_io.load_celegan(str(folder))
+    if ds == "uc_epi":
+        return psp_io.load_uc_epi(str(folder))
+    if ds in ("hesc", "hESC"):
+        return psp_io.load_hesc(str(folder))
+    if ds in ("planaria", "human_germ_cell", "pre_implant_human_embryo"):
+        return psp_io.load_cytotrace_rds_dataset(str(folder))
+    return None
+
+
+def _scanpy_preprocess(expr, *, hvg: bool, n_top_genes: int = 2000,
+                       n_components: int = 20, max_value: float = 10.0,
+                       seed: int = 0):
+    """Canonical Scanpy normalize -> log1p -> [HVG seurat] -> scale -> PCA.
+
+    Returns dict with scores, explained_variance_ratio, hvg_genes (list or
+    None for all-gene), n_genes_used, scanpy_version.
+    """
+    import scanpy as sc
+    import anndata as ad
+
+    sc.settings.verbosity = 0
+    X = expr.X
+    var = pd.DataFrame(index=list(expr.gene_names))
+    obs = pd.DataFrame(index=list(expr.cell_ids))
+    adata = ad.AnnData(X=X, obs=obs, var=var)
+
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+
+    hvg_genes = None
+    if hvg:
+        sc.pp.highly_variable_genes(
+            adata, flavor="seurat",
+            n_top_genes=min(n_top_genes, adata.n_vars - 1),
+            inplace=True,
+        )
+        adata = adata[:, adata.var["highly_variable"]].copy()
+        hvg_genes = list(adata.var_names)
+
+    sc.pp.scale(adata, max_value=max_value)
+    n_comp = int(min(n_components, adata.n_vars - 1, adata.n_obs - 1))
+    sc.tl.pca(adata, n_comps=n_comp, random_state=seed, zero_center=True)
+    return {
+        "scores": np.asarray(adata.obsm["X_pca"], dtype=np.float32),
+        "explained_variance_ratio": np.asarray(
+            adata.uns["pca"]["variance_ratio"], dtype=np.float32),
+        "hvg_genes": hvg_genes,
+        "n_genes_used": int(adata.n_vars),
+        "n_cells_used": int(adata.n_obs),
+        "scanpy_version": sc.__version__,
+    }
+
+
+def compute_pca_scores(ds: str, *, n_components: int = 20, hvg: bool = True,
+                       n_top_genes: int = 2000, seed: int = 0,
+                       max_cells: Optional[int] = None,
+                       use_cache: bool = True):
+    """Run the canonical Scanpy preprocessing -> PCA pipeline (cached).
+
+    Returns the dict from `_scanpy_preprocess` (plus `n_components_returned`).
+    Returns None when the raw data is not available.
+    """
+    cache = _cache_dir() / (
+        f"{ds}_{'hvg' + str(n_top_genes) if hvg else 'all'}"
+        f"_pc{n_components}_seed{seed}"
+        f"{f'_n{max_cells}' if max_cells else ''}.npz"
+    )
+    if use_cache and cache.exists():
+        z = np.load(cache, allow_pickle=True)
+        return {
+            "scores": z["scores"],
+            "explained_variance_ratio": z["explained_variance_ratio"],
+            "hvg_genes": list(z["hvg_genes"]) if "hvg_genes" in z.files
+                         and z["hvg_genes"].dtype.kind in ("U", "O") else None,
+            "n_genes_used": int(z["n_genes_used"]),
+            "n_cells_used": int(z["n_cells_used"]),
+            "scanpy_version": str(z["scanpy_version"]),
+        }
+    expr = load_raw_expression(ds)
+    if expr is None:
+        return None
+    if max_cells is not None and expr.X.shape[0] > max_cells:
+        rng = np.random.default_rng(seed)
+        sel = np.sort(rng.choice(expr.X.shape[0], int(max_cells), replace=False))
+        expr.X = expr.X[sel]
+        expr.cell_ids = [expr.cell_ids[i] for i in sel]
+        if expr.metadata is not None and len(expr.metadata) == max(sel) + 1 + 0:
+            try:
+                expr.metadata = expr.metadata.iloc[sel].copy()
+            except Exception:
+                pass
+    out = _scanpy_preprocess(
+        expr, hvg=hvg, n_top_genes=n_top_genes,
+        n_components=n_components, seed=seed,
+    )
+    if use_cache:
+        np.savez(
+            cache,
+            scores=out["scores"],
+            explained_variance_ratio=out["explained_variance_ratio"],
+            hvg_genes=np.asarray(out["hvg_genes"]) if out["hvg_genes"] is not None else np.asarray([]),
+            n_genes_used=out["n_genes_used"],
+            n_cells_used=out["n_cells_used"],
+            scanpy_version=out["scanpy_version"],
+        )
+    return out
+
+
+def load_unit_coords_pc13(ds: str, *, max_cells: Optional[int] = None,
+                          seed: int = 0) -> Optional[np.ndarray]:
+    """Best-effort PC1-3 unit-vector loader.
+
+    Tries (in order): outputs/raw_expression_validation/<ds>/_artifacts.npz,
+    examples/<ds>_pca.csv, then a fresh PCA run via compute_pca_scores.
+    """
+    val_out = ROOT / "outputs" / "raw_expression_validation"
+    art = load_artifacts(val_out, ds)
+    if art is not None and "coords3_unit" in art.files:
+        coords = np.asarray(art["coords3_unit"], dtype=float)
+    else:
+        df = load_pca_csv(ds)
+        if df is not None and {"PC1", "PC2", "PC3"}.issubset(df.columns):
+            coords = to_unit(df[["PC1", "PC2", "PC3"]].to_numpy(dtype=float))
+        else:
+            r = compute_pca_scores(ds, n_components=3, hvg=True, seed=seed)
+            if r is None:
+                return None
+            coords = to_unit(np.asarray(r["scores"][:, :3], dtype=float))
+    if max_cells is not None and coords.shape[0] > max_cells:
+        rng = np.random.default_rng(seed)
+        idx = np.sort(rng.choice(coords.shape[0], int(max_cells), replace=False))
+        coords = coords[idx]
+    return coords
+
+
+def load_regev_cell_cycle_genes() -> dict:
+    """Load Regev/Kowalczyk cell-cycle gene list (S phase + G2/M).
+
+    The standard layout of `regev_lab_cell_cycle_genes.txt` is 43 S-phase
+    genes followed by 54 G2/M-phase genes (97 lines total).
+    """
+    p = ROOT / "raw_data" / "regev_lab_cell_cycle_genes.txt"
+    if not p.exists():
+        return {"all": [], "s_phase": [], "g2m_phase": [], "source": str(p)}
+    genes = [line.strip() for line in open(p) if line.strip()]
+    return {"all": genes, "s_phase": genes[:43], "g2m_phase": genes[43:],
+            "source": str(p)}
+
+
+def fit_great_circle_curve(unit: np.ndarray, *, n_points: int = 360):
+    """Return (curve_xyz, gc_dict) for plotting."""
+    from .. import sphere_stats as psp_sph
+    gc = psp_sph.fit_great_circle(unit)
+    n = gc["normal"]
+    if abs(n[2]) < 0.9:
+        u = np.cross(n, [0.0, 0.0, 1.0]); u /= np.linalg.norm(u)
+    else:
+        u = np.cross(n, [1.0, 0.0, 0.0]); u /= np.linalg.norm(u)
+    v = np.cross(n, u)
+    t = np.linspace(0.0, 2.0 * np.pi, n_points)
+    curve = np.outer(np.cos(t), u) + np.outer(np.sin(t), v)
+    return curve, gc
+
+
 def load_geometry(val_out: Path, ds: str) -> Optional[pd.DataFrame]:
     p = val_out / ds / "per_cell_geometry.csv"
     if not p.exists():
