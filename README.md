@@ -1,10 +1,8 @@
 # SPHERE-PCA
 
-**Spherical Projection of the Regulatory Environment — a Python framework for geometric and gene-regularity analysis of single-cell PCA embeddings.**
+**Interpretable spherical geometry of single-cell state transitions from dominant principal components.**
 
-SPHERE-PCA projects the first three principal components (PC1–PC3) of normalized single-cell gene expression onto the unit sphere (S²), aligns a biologically defined root population to the north pole via Euler rotation, and analyzes root-aligned geodesic distance (θ), angular position (φ), and pre-projection radial magnitude (r) as interpretable coordinates for cell state and trajectory structure. It pairs geometric analysis with fixed-PCA-loading gene displacement scoring and interactive visualization, enabling reproducible hypothesis testing for the spherical structure, entropy gradients, branching topology, conserved regulatory features, and gene-coordinate associations in single-cell trajectory data.
-
-This is a **diagnostic and hypothesis-driven framework**, not a universal trajectory inference algorithm. SPHERE-PCA **does not infer directionality, does not replace UMAP/t-SNE/diffusion maps/scPhere, does not predict causal perturbation effects**, and works deterministically within its assumptions (PCA linearity, L2-norm preservation, fixed loadings) rather than learning parameters from data.
+SPHERE-PCA projects the first three principal components (PC1–PC3) of normalized single-cell gene expression onto the unit sphere (S²), aligns a biologically defined root population to the north pole via Euler rotation, and analyzes root-aligned geodesic distance (θ), angular position (φ), and pre-projection radial magnitude (r) as interpretable coordinates for cell state and trajectory structure. 
 
 ---
 
@@ -17,17 +15,6 @@ This is a **diagnostic and hypothesis-driven framework**, not a universal trajec
 | **θ** (root-aligned geodesic distance) | Progress along the principal great circle from the north pole | developmental stage, differentiation, cell-cycle phase *when validated against external labels or scores* |
 | **φ** (angular position) | Position around the sphere perpendicular to θ | branching, branched cell-state architecture, regional gene-expression clustering |
 | **r** (pre-projection radial norm) | Magnitude before L2 normalization | transcriptional activity, cell-cycle phase, biosynthetic state, depth-like or compositional variation |
-
-### Core capabilities
-
-| Feature | Scope |
-|---|---|
-| **Geometric analysis** | stripe strength / anisotropy, great-circle fit, geodesic gradients, branching vs. linear scoring |
-| **Robustness** | root-cluster sensitivity analysis, rotation-choice robustness, PC-count and HVG-selection robustness |
-| **Fixed-PCA-loading gene displacement** | per-gene progression (Δθ), branching (Δφ), and radial (Δr) scoring from computational ±δ perturbations in PC space |
-| **Cross-dataset comparison** | Procrustes alignment, conserved-stripe testing, replicate residual analysis |
-| **Interactive dashboard** | Streamlit app (`sphere-trace`) for exploratory data visualization and metric export |
-| **Reproducibility** | Scripts for end-to-end analysis from raw counts, pinned dependency versions, deterministic random seeds |
 
 ---
 
@@ -75,9 +62,6 @@ This is a **diagnostic and hypothesis-driven framework**, not a universal trajec
 ### Output
 - Per-cell: θ, φ, r, metadata
 - Per-gene: loading, displacement scores (P, B, R)
-- Per-dataset: geometry metrics, robustness envelopes
-- Figures: 3D sphere, equirectangular 2D map, stripe density, θ vs. pseudotime, branchpoint overlay, root-sensitivity bars, rotation-robustness histograms
-
 ---
 
 ## Installation
@@ -100,19 +84,7 @@ pip install -e .[test]
 
 ## Quick start
 
-### 1. Run hypothesis testing on example datasets
-
-```bash
-python scripts/run_pnas_hypothesis_suite.py \
-    --config examples/example_configs.yaml \
-    --outdir outputs/hypothesis_suite
-```
-
-This runs hypotheses H1–H7 on four example datasets (celegan, klein, planaria, uc_epi) and writes:
-- Per-dataset: `metrics.json`, `metrics.csv`, `report.md`, interactive Plotly figures
-- Summary: `outputs/hypothesis_suite/hypothesis_status_table.md`
-
-### 2. Explore interactively
+### 1. Explore interactively
 
 ```bash
 sphere-trace
@@ -124,10 +96,9 @@ Opens a Streamlit dashboard in your browser. Upload a CSV with PC1, PC2, PC3, an
 - Visualize 3D sphere and equirectangular 2D maps
 - Adjust root cluster and rotation
 - Compute geometry metrics
-- Test hypotheses (H1–H7) interactively
 - Export metrics and processed coordinates
 
-### 3. Reproduce manuscript figures
+### 2. Reproduce manuscript figures
 
 ```bash
 python scripts/make_manuscript_figures.py --figure 1 --all-panels
@@ -190,10 +161,10 @@ pca_sphere_projection/
 ├── sphere_stats.py           # Geometric metrics (stripe, anisotropy, great-circle)
 ├── topology.py               # Branching detection, graph-based analysis
 ├── comparison.py             # Cross-dataset Procrustes, conservation tests
-├── perturbation.py           # Gene-displacement scoring (H7)
+├── perturbation.py           # Gene-displacement scoring 
 ├── robustness.py             # Root sensitivity, rotation robustness
-├── entropy.py                # Entropy / stemness scoring (H1 support)
-├── gene_geometry.py          # Per-gene gradients on S², stripe-boundary ranking (H5)
+├── entropy.py                # Entropy / stemness scoring 
+├── gene_geometry.py          # Per-gene gradients on S², stripe-boundary ranking 
 ├── stripe.py                 # Stripe definition and binning utilities
 ├── io.py                     # Loaders for .mtx, .rds, .bz2, standard CSVs
 ├── preprocessing.py          # Normalization, HVG selection, filtering
@@ -208,36 +179,12 @@ pca_sphere_projection/
 └── ...
 
 scripts/
-├── run_pnas_hypothesis_suite.py          # Main reproducibility script (H1–H7)
-├── run_raw_expression_validation.py      # End-to-end validation from raw counts
-├── plot_raw_validation_figures.py        # Publication PNG generation for validation
-├── run_pc_robustness_cytotrace_neg_ctrl.py  # Reviewer-response robustness workflows
 └── make_manuscript_figures.py            # CLI for figure generation
-
-examples/
-├── example_configs.yaml      # Per-dataset parameters (root, angles, pseudotime bins)
-├── celegan_pca.csv, klein_pca.csv, planaria_pca.csv, uc_epi_pca.csv
-└── [Jupyter notebooks]       # Tutorial notebooks for each dataset
 
 tests/
 ├── test_sphere_stats.py, test_topology.py, test_comparison.py, ...
 └── [33 test cases]           # Unit tests for all major modules
 
-outputs/
-├── hypothesis_suite/         # Main hypothesis test results
-├── figures/                  # Manuscript figures (Fig1–4 + supplements)
-├── raw_expression_validation/  # End-to-end validation outputs
-└── ...
-
-manuscript/
-├── SPHERE_PCA_main.pdf       # Main manuscript
-├── SPHERE_PCA_SI.pdf         # Supplementary Information
-└── methods_manifest.md       # Detailed methods cross-reference
-
-images/
-├── Fig1A_pipeline_schematic.png
-├── Fig1B_sphere_example.png
-└── [other figures used in README]
 ```
 
 ---
@@ -259,22 +206,6 @@ images/
 - **Does not handle time-series or dynamic transitions**: The method assumes static cell snapshots. Velocity-based methods (scVelo, RNA velocity) are complementary.
 
 ---
-
-## Data availability & reproducibility
-
-### Datasets used in the manuscript
-
-| Dataset | Source | Format | Covered in examples/ | Coverage |
-|---|---|---|---|---|
-| C. elegans (Packer et al. 2019) | GEO | .mtx | celegan_pca.csv | embryo lineage tracing |
-| UC intestinal epithelium (Smillie et al. 2019) | GEO | .mtx | uc_epi_pca.csv | spatial + cell-state architecture |
-| Klein mESC (Klein et al. 2015) | GEO | .csv.bz2 | klein_pca.csv | directed differentiation |
-| hESC with CytoTRACE (Tezuka et al. 2020) | Data request | .rds | — | stemness validation |
-| Planaria (Plass et al. 2018) | GEO | matrix | planaria_pca.csv | multicellular regeneration |
-
-**Pre-computed PCs** for all datasets are included in `examples/` (`.csv` files, 8–9 MB each). See [`examples/example_configs.yaml`](examples/example_configs.yaml) for dataset-specific parameters.
-
-**Raw expression matrices** and metadata are hosted at GEO (see manuscript Methods and SI). A local cache can be placed in `raw_data/` to run the end-to-end validation workflow via `scripts/run_raw_expression_validation.py`.
 
 ### Reproducibility
 
@@ -303,7 +234,7 @@ python scripts/make_manuscript_figures.py --all-panels --seed 0
 
 If you use SPHERE-PCA in your research, please cite:
 
-> Yuan, L., *et al.* SPHERE-PCA: Geometric and gene-regulatory analysis of single-cell trajectories on the unit sphere. *In preparation*, 2026.
+> Yuan, L., *et al.* Interpretable spherical geometry of single-cell state transitions from dominant principal components. *bioRxiv*, 2026.
 
 Or use the [`CITATION.cff`](CITATION.cff) file for BibTeX / GitHub citation formatting.
 
@@ -319,26 +250,6 @@ python -m pytest tests/ -v
 
 ---
 
-## Architecture notes
-
-### Why PC1–PC3 only?
-
-The unit sphere S² is 2-dimensional; embedding in ℝ³ (Euclidean) requires a 3-vector. PC1–PC3 are the dominant three orthogonal axes from PCA, capturing the largest variance. This choice is:
-- **Reproducible**: determined by the data, not hyperparameter tuning.
-- **Interpretable**: loadings are preserved; each PC has an explicit gene-weight vector.
-- **Testable**: robustness can be checked by recomputing with different HVG counts or PC-selection strategies (see `run_pc_robustness_cytotrace_neg_ctrl.py`).
-
-### Why fixed-loading gene displacement?
-
-Fixed-loading scoring avoids the computational cost and complexity of full non-linear PCA updates. It assumes that adding ±δ to a gene's expression scales its PCA contribution linearly, which is a crude but deterministic approximation. This is **not a replacement for CRISPR/RNAi** but useful for prioritizing genes for experimental validation.
-
-### Interactive vs. scripted workflows
-
-- **Streamlit dashboard** (`sphere-trace`): exploratory, parameter tuning, hypothesis generation
-- **Scripts** (`run_pnas_hypothesis_suite.py`, etc.): reproducible, batch analysis, CI/CD integration, pinned parameters
-
----
-
 ## License
 
 MIT — see [`LICENSE`](LICENSE) for details.
@@ -347,15 +258,9 @@ MIT — see [`LICENSE`](LICENSE) for details.
 
 ## Authors
 
-**Long Yuan** ([lyuan13@jhmi.edu](mailto:lyuan13@jhmi.edu))
+**Long Yuan** ([lyuan13[at]jhmi.edu](mailto:lyuan13@jhmi.edu))
 
-*Johns Hopkins University, Department of Biomedical Engineering*
-
----
-
-## Acknowledgments
-
-We thank colleagues and reviewers for feedback on spherical geometry, trajectory interpretation, and the biological interpretation of the radial coordinate. The C. elegans, UC epithelium, mESC, hESC, and planaria datasets were generously made public by the original authors. This work builds on scikit-learn (PCA), Scanpy (preprocessing), and Plotly (interactive visualization).
+*Johns Hopkins University, Department of Immunology and Computer Science*
 
 ---
 
@@ -363,13 +268,5 @@ We thank colleagues and reviewers for feedback on spherical geometry, trajectory
 
 Please report bugs, feature requests, or questions via GitHub Issues. Contributions are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md) if present, or open an issue for guidance.
 
----
 
-## References
-
-1. Packer, J. S., *et al.* A lineage-resolved molecular atlas of C. elegans embryogenesis at single-cell resolution. *Science* **365**, eaax1971 (2019).
-2. Smillie, C. S., *et al.* Intra- and inter-cellular rewiring of the colonic stem cell ecosystem by a high-frequency genotoxin. *Cell* **178**, 714–730 (2019).
-3. Klein, A. M., *et al.* Droplet barcoding for single-cell transcriptomics applied to embryonic stem cells. *Cell* **161**, 1187–1201 (2015).
-4. Tezuka, H., *et al.* Suppression of Foxo1 activity in CD4+ T cells allows for formation of long-lived germinal center B cells. *Immunity* **52**, 286–300 (2020).
-5. Plass, M., *et al.* Cell type atlas and lineage tree of C. elegans. *Science* **365**, eaaq1723 (2018).
 
