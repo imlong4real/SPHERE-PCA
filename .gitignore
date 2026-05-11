@@ -2,6 +2,10 @@
 outputs/
 manuscript/
 examples/
+scripts/plot_raw_validation_figures.py
+scripts/run_pc_robustness_cytotrace_neg_ctrl.py
+scripts/run_pnas_hypothesis_suite.py
+scripts/run_raw_expression_validation.py
 *.html
 *.json
 *.log
