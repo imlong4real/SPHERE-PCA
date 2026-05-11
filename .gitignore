@@ -1,6 +1,7 @@
 # Generated outputs
 outputs/
 manuscript/
+examples/
 *.html
 *.json
 *.log
