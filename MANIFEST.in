@@ -1,0 +1,6 @@
+include CITATION.cff
+include requirements-manuscript.txt
+recursive-include assets/images *.png
+recursive-include examples *.md *.py
+recursive-include pca_sphere_projection/data *.csv *.yaml
+recursive-include scripts/manuscript *.md *.py

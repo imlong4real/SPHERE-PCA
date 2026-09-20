@@ -5,9 +5,9 @@ heatmaps, Planaria lineage sectors, Xenium / TRACER stress test) and
 writes every output under ``outputs/figures/supplement/``.
 
 Usage:
-    python scripts/make_supplement_figures.py
-    python scripts/make_supplement_figures.py --only benchmark planaria
-    python scripts/make_supplement_figures.py --xenium-max-cells 60000
+    python scripts/manuscript/make_supplement_figures.py
+    python scripts/manuscript/make_supplement_figures.py --only benchmark planaria
+    python scripts/manuscript/make_supplement_figures.py --xenium-max-cells 60000
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import time
 import traceback
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from pca_sphere_projection.figures.supplements import (  # noqa: E402
@@ -73,7 +73,7 @@ def _write_final_summary(results: dict) -> Path:
     lines.append("")
     lines.append(
         "This document summarises the four supplemental analyses run by "
-        "`scripts/make_supplement_figures.py`. Conservative interpretation "
+        "`scripts/manuscript/make_supplement_figures.py`. Conservative interpretation "
         "is maintained throughout; descriptive findings are clearly "
         "distinguished from statistically validated ones."
     )

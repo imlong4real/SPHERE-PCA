@@ -1,3 +1,40 @@
+"""Preserved manuscript-analysis namespace.
+
+The lightweight public API is :mod:`sphere_pca`. This historical namespace
+retains its original numerical implementation and requires the ``legacy``
+optional dependency set.
+"""
+
+from importlib import import_module
+
+
+_LEGACY_IMPORTS = {
+    "matplotlib.pyplot": "matplotlib",
+    "pandas": "pandas",
+    "plotly.graph_objects": "plotly",
+    "scipy.stats": "scipy",
+    "seaborn": "seaborn",
+    "statsmodels.stats.multitest": "statsmodels",
+}
+_missing_legacy_dependencies = []
+for _module, _distribution in _LEGACY_IMPORTS.items():
+    try:
+        import_module(_module)
+    except ModuleNotFoundError:
+        if _distribution not in _missing_legacy_dependencies:
+            _missing_legacy_dependencies.append(_distribution)
+
+if _missing_legacy_dependencies:
+    _missing = ", ".join(sorted(_missing_legacy_dependencies))
+    raise ImportError(
+        "The preserved pca_sphere_projection namespace requires optional "
+        f"legacy dependencies (missing: {_missing}). Install them with "
+        "`python -m pip install 'sphere-pca[legacy]'`. The lightweight "
+        "public API remains available as `import sphere_pca`."
+    )
+
+del _LEGACY_IMPORTS, _missing_legacy_dependencies, _module, _distribution
+
 from .comparison import (
     conserved_stripe_test,
     procrustes_align_spheres,

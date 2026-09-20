@@ -1,7 +1,6 @@
 # Generated outputs
-outputs/
-manuscript/
-examples/
+/outputs/
+/manuscript/
 scripts/plot_raw_validation_figures.py
 scripts/run_pc_robustness_cytotrace_neg_ctrl.py
 scripts/run_pnas_hypothesis_suite.py
@@ -10,13 +9,19 @@ scripts/run_raw_expression_validation.py
 *.json
 *.log
 
+# Local, large tutorial inputs (the tracked examples are small Python files)
+examples/*.csv
+examples/*.ipynb
+examples/*.png
+examples/*.yaml
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb_checkpoints/
 
 # Large or intermediate data
-raw_data/
-data/
+/raw_data/
+/data/
 *.h5ad
 *.loom
 *.parquet
@@ -71,6 +76,10 @@ wheels/
 # Pytest
 .pytest_cache/
 .hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Streamlit cache
 .streamlit/

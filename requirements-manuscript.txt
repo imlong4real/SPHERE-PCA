@@ -1,0 +1,13 @@
+# Environment constraints used by the bioRxiv manuscript workflows.
+# Package metadata and public extras live only in pyproject.toml.
+numpy>=2.0.2,<3.0
+pandas>=2.3.3,<3.0
+matplotlib>=3.9.4,<4.0
+seaborn>=0.13,<1.0
+scipy>=1.13.1,<2.0
+statsmodels>=0.14.6,<1.0
+plotly>=5.15,<7.0
+pyyaml>=6,<7
+streamlit>=1.30,<2.0
+scanpy>=1.10.3,<2.0
+gseapy>=1.2.1,<2.0

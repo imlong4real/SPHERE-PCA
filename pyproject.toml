@@ -1,44 +1,109 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pca_sphere_projection"
-version = "0.2.0"
-description = "Spherical PCA hypothesis explorer for single-cell trajectory geometry."
+name = "sphere-pca"
+version = "0.3.0"
+description = "Interpretable spherical coordinates for single-cell state transitions from principal components."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-    { name = "Long Yuan", email = "lyuan13@jhmi.edu" }
+    { name = "Long Yuan", email = "lyuan13@jhmi.edu" },
 ]
-dependencies = [
-    "numpy>=2.0.2,<3.0",
-    "pandas>=2.3.3,<3.0",
-    "matplotlib>=3.9.4,<4.0",
-    "seaborn",
-    "scipy>=1.13.1,<2.0",
-    "statsmodels>=0.14.6,<1.0",
-    "plotly",
-    "pyyaml",
-    "scanpy>=1.10.3,<2.0",
-    "gseapy>=1.2.1,<2.0",
+keywords = [
+    "single-cell",
+    "principal-component-analysis",
+    "spherical-geometry",
+    "trajectory-analysis",
 ]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy>=1.23.5",
+    "scikit-learn>=1.2",
 ]
 
 [project.optional-dependencies]
-app = ["streamlit>=1.30"]
-test = ["pytest"]
+plot = [
+    "matplotlib>=3.6",
+]
+singlecell = [
+    "anndata>=0.9",
+]
+legacy = [
+    "matplotlib>=3.6",
+    "pandas>=1.5",
+    "plotly>=5.15",
+    "scipy>=1.9",
+    "seaborn>=0.12",
+    "statsmodels>=0.14",
+]
+app = [
+    "matplotlib>=3.6",
+    "pandas>=1.5",
+    "plotly>=5.15",
+    "pyyaml>=6",
+    "scipy>=1.9",
+    "seaborn>=0.12",
+    "statsmodels>=0.14",
+    "streamlit>=1.30",
+]
+manuscript = [
+    "anndata>=0.9",
+    "gseapy>=1.1",
+    "h5py>=3.8",
+    "matplotlib>=3.6",
+    "pandas>=1.5",
+    "plotly>=5.15",
+    "pyyaml>=6",
+    "rdata>=0.9",
+    "scanpy>=1.10",
+    "scipy>=1.9",
+    "seaborn>=0.12",
+    "statsmodels>=0.14",
+    "streamlit>=1.30",
+]
+dev = [
+    "anndata>=0.9",
+    "build>=1.2",
+    "matplotlib>=3.6",
+    "pandas>=1.5",
+    "plotly>=5.15",
+    "pytest>=7.4",
+    "pyyaml>=6",
+    "scipy>=1.9",
+    "seaborn>=0.12",
+    "statsmodels>=0.14",
+    "twine>=5",
+]
 
 [project.scripts]
-sphere-trace = "pca_sphere_projection.app:main"
+sphere-trace = "sphere_pca.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/imlong4real/pca_sphere_projection"
+Homepage = "https://github.com/imlong4real/SPHERE-PCA"
+Repository = "https://github.com/imlong4real/SPHERE-PCA"
+Issues = "https://github.com/imlong4real/SPHERE-PCA/issues"
+Preprint = "https://doi.org/10.64898/2026.09.11.751061"
 
 [tool.setuptools.packages.find]
-include = ["pca_sphere_projection*"]
+include = ["sphere_pca*", "pca_sphere_projection*"]
+
+[tool.setuptools.package-data]
+pca_sphere_projection = ["data/*.csv", "data/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

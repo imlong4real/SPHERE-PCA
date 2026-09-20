@@ -25,6 +25,7 @@ import plotly.graph_objects as go
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_DATA = Path(__file__).resolve().parent / "data"
 
 
 def _ensure_streamlit():
@@ -53,7 +54,15 @@ def main() -> None:
     if os.environ.get("STREAMLIT_SERVER_RUN_ON_SAVE") or os.environ.get("STREAMLIT_RUNTIME"):
         _render_app()
         return
-    args = ["streamlit", "run", str(here), "--theme.base=dark", *sys.argv[1:]]
+    args = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(here),
+        "--theme.base=dark",
+        *sys.argv[1:],
+    ]
     subprocess.run(args, check=False)
 
 
@@ -101,13 +110,21 @@ def _render_app() -> None:
     )
 
     # ---- Sidebar: data source + parameters ----
-    cfg_path = REPO_ROOT / "examples" / "example_configs.yaml"
     examples = {}
-    if cfg_path.exists():
+    examples_base = None
+    config_sources = (
+        (REPO_ROOT / "examples" / "example_configs.yaml", REPO_ROOT),
+        (PACKAGE_DATA / "example_configs.yaml", PACKAGE_DATA),
+    )
+    for cfg_path, base in config_sources:
+        if not cfg_path.exists():
+            continue
         try:
             examples = yaml.safe_load(cfg_path.read_text()) or {}
+            examples_base = base
+            break
         except Exception:
-            examples = {}
+            continue
 
     with st.sidebar:
         st.header("Data")
@@ -119,7 +136,7 @@ def _render_app() -> None:
                 return
             ex_name = st.selectbox("Example", list(examples.keys()))
             cfg = examples[ex_name]
-            csv_path = REPO_ROOT / cfg["csv"]
+            csv_path = examples_base / cfg["csv"]
             if not csv_path.exists():
                 st.error(f"CSV missing: {csv_path}")
                 return

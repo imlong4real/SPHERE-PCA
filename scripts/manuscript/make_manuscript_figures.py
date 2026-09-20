@@ -6,20 +6,20 @@ that returns `{panel_id, figure_n, figure, data, config}`.
 
 Run all figures:
 
-    python scripts/make_manuscript_figures.py
+    python scripts/manuscript/make_manuscript_figures.py
 
 Run one figure:
 
-    python scripts/make_manuscript_figures.py --figure 3
+    python scripts/manuscript/make_manuscript_figures.py --figure 3
 
 Run one panel:
 
-    python scripts/make_manuscript_figures.py --figure 3 --panel A_hesc
-    python scripts/make_manuscript_figures.py --figure 1 --panel A
+    python scripts/manuscript/make_manuscript_figures.py --figure 3 --panel A_hesc
+    python scripts/manuscript/make_manuscript_figures.py --figure 1 --panel A
 
 Override hyperparameters from the CLI:
 
-    python scripts/make_manuscript_figures.py --figure 1 --panel E \
+    python scripts/manuscript/make_manuscript_figures.py --figure 1 --panel E \
         --override perturbation_degrees=10 n_perturbations=300
 """
 
@@ -33,7 +33,7 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from pca_sphere_projection import figures  # noqa: E402
