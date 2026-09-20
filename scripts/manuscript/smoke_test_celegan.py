@@ -5,7 +5,7 @@ import sys
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from pca_sphere_projection.app_processing import default_root_cluster, run_projection_pipeline, validate_input_dataframe

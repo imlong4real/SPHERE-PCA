@@ -1,0 +1,13 @@
+cell_id,PC1,PC2,PC3,cluster,celltype
+cell_01,0.10,0.05,1.20,root,early
+cell_02,-0.08,0.04,1.10,root,early
+cell_03,0.06,-0.07,1.00,root,early
+cell_04,0.55,0.12,0.82,middle,intermediate_a
+cell_05,0.48,-0.22,0.74,middle,intermediate_a
+cell_06,-0.45,0.28,0.70,middle,intermediate_b
+cell_07,-0.52,-0.16,0.66,middle,intermediate_b
+cell_08,0.82,0.30,0.20,late,mature_a
+cell_09,0.74,-0.42,0.15,late,mature_a
+cell_10,-0.78,0.38,0.12,late,mature_b
+cell_11,-0.70,-0.46,0.08,late,mature_b
+cell_12,0.12,-0.88,-0.05,late,mature_c

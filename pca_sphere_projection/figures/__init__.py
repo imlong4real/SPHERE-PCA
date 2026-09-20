@@ -5,7 +5,8 @@ Each figure module exposes a ``PANELS`` dict mapping a panel id (e.g. ``"A"``,
 -> dict``.
 
 The registry below collects all four figures into one place so the CLI in
-``scripts/make_manuscript_figures.py`` can dispatch with ``--figure 3 --panel A_hesc``.
+``scripts/manuscript/make_manuscript_figures.py`` can dispatch with
+``--figure 3 --panel A_hesc``.
 
 A panel function MUST:
 

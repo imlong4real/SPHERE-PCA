@@ -1,0 +1,8 @@
+Synthetic PC coordinates:
+  csv: synthetic_pc_coordinates.csv
+  label_column: celltype
+  root_column: cluster
+  root_value: root
+  euler_angles: [0, 0, 0]
+  pseudotime_column: cluster
+  pseudotime_parser: ordinal

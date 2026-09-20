@@ -4,7 +4,7 @@ These modules formalise exploratory notebook analyses
 (`examples/benchmark.ipynb`, `examples/planaria.ipynb`, Xenium notebook)
 into reproducible publication-quality outputs.
 
-The orchestrator is `scripts/make_supplement_figures.py`; each module
+The orchestrator is `scripts/manuscript/make_supplement_figures.py`; each module
 exposes a `run(out_root)` function that produces PNG + sidecar config +
 CSV tables under `outputs/figures/supplement/<topic>/`.
 """
