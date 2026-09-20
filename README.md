@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/imlong4real/SPHERE-PCA/main/assets/images/SPHERE-PCA_logo.png" alt="SPHERE-PCA logo" width="190">
+  <img src="assets/images/SPHERE-PCA_logo.png" alt="SPHERE-PCA logo" width="190">
   <h1>SPHERE-PCA</h1>
   <p><strong>Interpretable spherical coordinates for single-cell state transitions from principal components.</strong></p>
 
