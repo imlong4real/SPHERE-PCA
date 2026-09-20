@@ -4,6 +4,7 @@
   <p><strong>Interpretable spherical coordinates for single-cell state transitions from principal components.</strong></p>
 
   <p>
+    <a href="https://pypi.org/project/sphere-pca/"><img src="https://img.shields.io/pypi/v/sphere-pca?color=3775A9&logo=pypi&logoColor=white" alt="PyPI version"></a>
     <a href="https://doi.org/10.64898/2026.09.11.751061"><img src="https://img.shields.io/badge/bioRxiv-10.64898%2F2026.09.11.751061-B31B1B" alt="bioRxiv DOI"></a>
     <a href="https://github.com/imlong4real/SPHERE-PCA/actions/workflows/tests.yml"><img src="https://github.com/imlong4real/SPHERE-PCA/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
     <a href="https://github.com/imlong4real/SPHERE-PCA/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
@@ -26,10 +27,16 @@ Root choice and coordinate interpretations should be validated independently.
 
 ## Installation
 
-Install the current source release:
+Install the latest release from PyPI:
 
 ```bash
-python -m pip install "sphere-pca[plot] @ git+https://github.com/imlong4real/SPHERE-PCA.git"
+python -m pip install sphere-pca
+```
+
+To include the plotting helpers:
+
+```bash
+python -m pip install "sphere-pca[plot]"
 ```
 
 For local development or manuscript reproduction:
@@ -45,7 +52,7 @@ core install contains only NumPy and scikit-learn. The preserved historical
 namespace is available through the `legacy` extra; the dashboard uses `app`:
 
 ```bash
-python -m pip install "sphere-pca[app] @ git+https://github.com/imlong4real/SPHERE-PCA.git"
+python -m pip install "sphere-pca[app]"
 sphere-trace
 ```
 
